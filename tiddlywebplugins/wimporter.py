@@ -43,19 +43,21 @@ def interface(environ, start_response):
 @do_html()
 def wimport(environ, start_response):
     form = cgi.FieldStorage(fp=environ['wsgi.input'], environ=environ)
+    tmp_bag = _make_bag(environ)
     if 'url' in form or 'file' in form:
         try:
             if form['url'].value:
-                tmp_bag = _process_url(environ, form['url'].value)
+                _process_url(environ, form['url'].value, tmp_bag)
             if form['file'].filename:
-                tmp_bag = _process_file(environ, form['file'].file)
-            return _show_chooser(environ, tmp_bag)
-        except AttributeError: # content was not right
-            return _send_wimport(environ, start_response, 'that was not a wiki')
+                _process_file(environ, form['file'].file, tmp_bag)
+            fixed_bag = environ['tiddlyweb.query'].get('bag', [None])[0]
+            return _show_chooser(environ, tmp_bag, fixed_bag)
+        except AttributeError, exc: # content was not right
+            return _send_wimport(environ, start_response, 'that was not a wiki %s' % exc)
         except ValueError, exc: # file or url was not right
             return _send_wimport(environ, start_response,
                     'could not read that')
-    elif 'bag' in form:
+    elif 'target_bag' in form:
         return _process_choices(environ, start_response, form)
     else:
         return _send_wimport(environ, start_response, 'missing field info')
@@ -64,16 +66,21 @@ def _process_choices(environ, start_response, form):
     store = environ['tiddlyweb.store']
     user = environ['tiddlyweb.usersign']
 
-    tmp_bag = form['tmpbag'].value.decode('utf-8', 'ignore')
-    bag = form['bag'].value.decode('utf-8', 'ignore')
+    tmp_bag = form['tmp_bag'].value.decode('utf-8', 'ignore')
+    bag = form['target_bag'].value.decode('utf-8', 'ignore')
+    if bag:
+        bag = Bag(bag)
+        try:
+            bag.skinny = True
+            bag = store.get(bag)
+        except NoBagError:
+            return _send_wimport(environ, start_response, 'chosen bag does not exist')
+    else:
+        bag = form['new_bag'].value.decode('utf-8', 'ignore')
+        bag = _make_bag(environ, bag)
 
-    bag = Bag(bag)
     try:
-        bag.skinny = True
-        bag = store.get(bag)
         bag.policy.allows(user, 'write')
-    except NoBagError:
-        return _send_wimport(environ, start_response, 'chosen bag does not exist')
     except (ForbiddenError, UserRequiredError):
         return _send_wimport(environ, start_response, 'you may not write to that bag')
 
@@ -89,43 +96,42 @@ def _process_choices(environ, start_response, form):
     raise HTTP302(bagurl)
 
 
-def _show_chooser(environ, bag):
+def _show_chooser(environ, tmp_bag, fixed_bag):
     # refresh the bag object
     store = environ['tiddlyweb.store']
-    bag.skinny = True
-    bag = store.get(bag)
-    tiddlers = filter_tiddlers_from_bag(bag, 'sort=title')
+    tmp_bag.skinny = True
+    tmp_bag = store.get(tmp_bag)
+    tiddlers = filter_tiddlers_from_bag(tmp_bag, 'sort=title')
     template = get_template(environ, 'chooser.html')
+    print 'fb', fixed_bag
     return template.generate(tiddlers=tiddlers,
-            tmpbag=bag.name,
+            tmp_bag=tmp_bag.name,
+            fixed_bag=fixed_bag,
             bags=_get_bags(environ))
 
 
-def _process_url(environ, url):
-    tmp_bag = _make_bag(environ)
-    import_one(tmp_bag.name, url, environ['tiddlyweb.store'])
-    return tmp_bag
+def _process_url(environ, url, bag):
+    import_one(bag.name, url, environ['tiddlyweb.store'])
 
 
-def _process_file(environ, filehandle):
-    tmp_bag = _make_bag(environ)
+def _process_file(environ, filehandle, bag):
     wikitext = filehandle.read().decode('utf-8', 'replace')
     filehandle.close()
     tiddlers = wiki_string_to_tiddlers(wikitext)
     store = environ['tiddlyweb.store']
     for tiddler in tiddlers:
-        tiddler.bag = tmp_bag.name
+        tiddler.bag = bag.name
         store.put(tiddler)
-    return tmp_bag
 
 
-def _make_bag(environ):
+def _make_bag(environ, bag_name=None):
+    bag_name = bag_name or "import-tmp-%s" % str(uuid())
     store = environ['tiddlyweb.store']
-    bag_name = str(uuid())
     bag = Bag(bag_name)
     _set_restricted_policy(environ, bag)
     store.put(bag)
     return bag
+
 
 def _set_restricted_policy(environ, bag):
     """
@@ -144,12 +150,13 @@ def _set_restricted_policy(environ, bag):
 
 
 def _send_wimport(environ, start_response, message=''):
+    query = environ["tiddlyweb.query"]
+    bag = query.get("bag", [None])[0]
     template = get_template(environ, 'wimport.html')
-    return template.generate(message=message)
+    return template.generate(bag=bag,message=message)
 
 
 def _get_bags(environ):
-# XXX we need permissions handling here
     store = environ['tiddlyweb.store']
     user = environ['tiddlyweb.usersign']
     bags = store.list_bags()
@@ -158,7 +165,8 @@ def _get_bags(environ):
         bag = store.get(bag)
         try:
             bag.policy.allows(user, 'write')
-            kept_bags.append(bag)
+            if not bag.name.startswith('import-tmp'):
+                kept_bags.append(bag)
             continue
         except (ForbiddenError, UserRequiredError):
             pass

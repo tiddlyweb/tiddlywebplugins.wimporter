@@ -1,10 +1,25 @@
-<a href="">start over</a>
+<style>                                 
+  #wimporter form { width: 600px; margin: 1em ; text-align: left; background: #ace; padding: 1em; }
+  #wimporter .formSection { margin: 1em; background:#def; padding: 1em;} 
+  #wimportermessage { margin: 1em; color: red; }
+</style>
+<div id="wimporter">
 {% if message %}
-<div id="message">{{ message }}</div>
-{% endif %}
+  <div id="wimportermessage">{{ message }}</div>
+{% endif %}            
 <form method="POST" enctype="multipart/form-data">
-    Pick One:<br/>
-    URL of Wiki or Cook Recipe: <input type="text" name="url" /><br/>
-    Filename Wiki: <input type="file" name="file" /><br/>
-    <input type="submit" value="submit" />
+    <input type="hidden" name="bag" value="{{ bag }}" />
+    <div class="formSection" id="data">
+    <a href="">start over</a>
+      <table>
+        <tr id="instruction"><td colspan="2">Pick One:</td></tr>
+        <tr id="url"><td>URL of Wiki or Cook Recipe:</td><td><input type="text" name="url" /></td></tr>
+        <tr id="fileUpload"><td>Filename Wiki:</td><td><input type="file" name="file" /></td></tr>
+        <tr>
+          <td>&nbsp;</td>
+          <td><input type="submit" value="submit" /></td>
+        </tr>
+    </table>
+    </div>
 </form>
+</div>

@@ -1,31 +1,103 @@
-<script src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"
-    type="text/javascript"></script>
+<!-- TODO should be proper jQuery autocomplete -->
+
+<style>                                 
+  #wimporter form { width: 600px; margin: 1em ; text-align: left; background: #ace; padding: 1em; }
+  #wimporter .formSection { margin: 1em; background:#def; padding: 1em;} 
+  #wimportermessage { margin: 1em; color: red; }
+  #bagChoice { margin: 1em 0; }
+  #tiddlers { text-align: left; position: relative; margin: 0.5em; }
+  #bagMessage { visibility: hidden; }
+  .bagMessage { font-style: small; font-style: italic; margin: 1em; }
+  #bagCreateMessage { display: none; }
+
+  #selectall { display: block; }
+  .tiddlerName { cursor: pointer; }
+</style>
+
+<div id="wimporter">
+{% if message %}
+  <div id="wimportermessage">{{ message }}</div>
+{% endif %}            
+
+<div><a href="">start over</a></div>
+
+<form method="POST" enctype="multipart/form-data">
+
+  <input type="hidden" name="tmp_bag" value="{{ tmp_bag|escape }}" />
+
+  {% if fixed_bag %}
+    <input type="hidden" id="fixed_bag" name="target_bag" value="{{ fixed_bag }}" />
+  {% else %}
+    <div class="formSection">
+      Choose a bag to put these doods in:
+      <select id="bag" name="target_bag">
+          <option value=""></option>
+          {% for bag in bags %}
+            <option value="{{ bag.name|escape }}">{{ bag.name }}</option>
+          {% endfor %}
+      </select>
+      <div id="bagChoice">Or choose a new bag: <input id="new_bag" type="text" name="new_bag" /></div>
+      <div id="bagMessage">
+        <div class="bagMessage" id="bagExistsMessage">bag found - tiddlers will be placed into existing bag</div>
+        <div class="bagMessage" id="bagCreateMessage">bag not found - tiddlers will be placed into new bag</div>
+      </div>
+    </div>
+  {% endif %}
+
+  <input type="submit" value="submit" />
+  <div id="selectTiddlers" class="formSection">
+    <div>Select Tiddlers:</div>
+    <div id="tiddlers">
+      <input type="button" id="selectall" value="Select All" />
+      <input type="reset" id="rest" value="Reset" />
+      {% for tiddler in tiddlers %}
+        <div id="tiddler">
+          <input type="checkbox" name="tiddler" value="{{ tiddler.title|escape }}" />
+          <span class="tiddlerName">{{ tiddler.title }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  <input type="submit" value="submit" />
+</form>
+
+</div>
+
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js" type="text/javascript"></script>
 <script>
 $(function() {
-    $("input:checkbox").eq(0).before(
-        '<input type="button" id="selectall" value="Select All" /><br />');
-    $("#selectall").click(function () {
-        $("input:checkbox").attr("checked", "1");
+
+  $.fn.visibleIf = function(show) {
+    return $(this).css("visibility", show ? "visible" : "hidden");
+  }
+
+  $("#selectall").click(function () {
+    $("input:checkbox").attr("checked", "1");
+  });
+
+  $(".tiddlerName").click(function() {
+    $(this).siblings("input:checkbox").click();
+  });
+  
+  if ($("#fixed_bag").length) return;
+
+  $("#new_bag").keyup(function() {
+    var matchingOption = null;
+    $("option").each(function() {
+      if (this.innerHTML==$("#new_bag").val()) matchingOption = this;
     });
+    if (matchingOption) {
+      matchingOption.selected = "selected";
+      $("#bagExistsMessage").show();
+      $("#bagCreateMessage").hide();
+    } else {
+      $("option")[0].selected="selected";
+      $("#bagExistsMessage").hide();
+      $("#bagCreateMessage").show();
+    }
+    $("#bagMessage").visibleIf($("#new_bag").val().length);
+  });
+  $("#bagMessage").visibleIf($("#new_bag").val().length);
+
 });
 </script>
-
-<a href="">start over</a>
-<form method="POST" enctype="multipart/form-data">
-    Choose a bag to put these doods in: <select name="bag">
-        <option value=""></option>
-        {% for bag in bags %}
-            {% if bag.name != tmpbag %}
-            <option value="{{ bag.name|escape }}">{{ bag.name }}</option>
-            {% endif %}
-        {% endfor %}
-    </select><br/>
-    <input type="submit" value="submit" /><input type="reset" value="reset" /><br/>
-    Select Tiddlers<br/>
-    {% for tiddler in tiddlers %}
-    <input type="checkbox" name="tiddler" value="{{ tiddler.title|escape }}" />
-    {{ tiddler.title }}<br />
-    {% endfor %}
-    <input type="hidden" name="tmpbag" value="{{ tmpbag|escape }}" />
-    <input type="submit" value="submit" />
-</form>
