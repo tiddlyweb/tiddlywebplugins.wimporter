@@ -19,7 +19,8 @@ from uuid import uuid4 as uuid
 
 from tiddlywebplugins.utils import entitle, do_html
 from tiddlywebplugins.templates import get_template
-from tiddlywebplugins.twimport import import_one, wiki_string_to_tiddlers
+from tiddlywebplugins.twimport import (import_one,
+        wiki_string_to_tiddlers, get_url_handle)
 
 from tiddlyweb.control import filter_tiddlers_from_bag
 from tiddlyweb.model.bag import Bag
@@ -53,10 +54,15 @@ def wimport(environ, start_response):
             fixed_bag = environ['tiddlyweb.query'].get('bag', [None])[0]
             return _show_chooser(environ, tmp_bag, fixed_bag)
         except AttributeError, exc: # content was not right
-            return _send_wimport(environ, start_response, 'that was not a wiki %s' % exc)
+            return _send_wimport(environ, start_response,
+                    'that was not a wiki %s' % exc)
         except ValueError, exc: # file or url was not right
             return _send_wimport(environ, start_response,
-                    'could not read that')
+                    'could not read that %s' % exc)
+        except (OSError, urllib2.URLError), exc:
+            return _send_wimport(environ, start_response,
+                    'trouble reading: %s' % exc)
+
     elif 'target_bag' in form:
         return _process_choices(environ, start_response, form)
     else:
@@ -110,7 +116,13 @@ def _show_chooser(environ, tmp_bag, fixed_bag):
 
 
 def _process_url(environ, url, bag):
-    import_one(bag.name, url, environ['tiddlyweb.store'])
+    try:
+        import_one(bag.name, url, environ['tiddlyweb.store'])
+    except ValueError:
+        # automatic detection did not work, fail over to wiki
+        # XXX: later add sniffing
+        url, handle = get_url_handle(url)
+        _process_file(environ, handle, bag)
 
 
 def _process_file(environ, filehandle, bag):

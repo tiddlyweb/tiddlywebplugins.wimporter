@@ -17,7 +17,7 @@ setup(
         platforms = 'Posix; MacOS X; Windows',
         install_requires = ['setuptools',
             'tiddlyweb',
-            'tiddlywebplugins.twimport',
+            'tiddlywebplugins.twimport>=0.9',
             'tiddlywebplugins.utils',
             'tiddlywebplugins.templates'],
         include_package_data = True,
