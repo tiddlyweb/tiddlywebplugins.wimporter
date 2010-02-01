@@ -43,8 +43,8 @@ def interface(environ, start_response):
 @do_html()
 def wimport(environ, start_response):
     form = cgi.FieldStorage(fp=environ['wsgi.input'], environ=environ)
-    tmp_bag = _make_bag(environ)
     if 'url' in form or 'file' in form:
+        tmp_bag = _make_bag(environ)
         try:
             if form['url'].value:
                 _process_url(environ, form['url'].value, tmp_bag)
@@ -103,7 +103,6 @@ def _show_chooser(environ, tmp_bag, fixed_bag):
     tmp_bag = store.get(tmp_bag)
     tiddlers = filter_tiddlers_from_bag(tmp_bag, 'sort=title')
     template = get_template(environ, 'chooser.html')
-    print 'fb', fixed_bag
     return template.generate(tiddlers=tiddlers,
             tmp_bag=tmp_bag.name,
             fixed_bag=fixed_bag,
