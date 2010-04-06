@@ -31,7 +31,8 @@ from tiddlyweb.web.util import bag_url
 from tiddlyweb.web.http import HTTP302
 
 def init(config):
-    config['selector'].add('/import', GET=interface, POST=wimport)
+    if 'selector' in config:
+        config['selector'].add('/import', GET=interface, POST=wimport)
 
 
 @entitle('Import Tiddlers')
