@@ -22,7 +22,7 @@ from tiddlywebplugins.templates import get_template
 from tiddlywebplugins.twimport import (import_one,
         wiki_string_to_tiddlers, get_url_handle)
 
-from tiddlyweb.control import filter_tiddlers_from_bag
+from tiddlyweb.control import filter_tiddlers
 from tiddlyweb.model.bag import Bag
 from tiddlyweb.model.policy import ForbiddenError, UserRequiredError
 from tiddlyweb.model.tiddler import Tiddler
@@ -108,7 +108,7 @@ def _show_chooser(environ, tmp_bag, fixed_bag):
     store = environ['tiddlyweb.store']
     tmp_bag.skinny = True
     tmp_bag = store.get(tmp_bag)
-    tiddlers = filter_tiddlers_from_bag(tmp_bag, 'sort=title')
+    tiddlers = filter_tiddlers(store.list_bag_tiddlers(tmp_bag), 'sort=title')
     template = get_template(environ, 'chooser.html')
     return template.generate(tiddlers=tiddlers,
             tmp_bag=tmp_bag.name,
