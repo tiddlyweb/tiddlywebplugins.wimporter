@@ -1,5 +1,5 @@
 """
-A tool for importing a TiddlyWiki into a TiddlyWeb,
+A plugin for importing a TiddlyWiki into a TiddlyWeb,
 via the web, either by uploading a file or providing
 a URL. This differs from other tools in that it provides
 a selection system.
@@ -9,6 +9,13 @@ driven.
 
 Two templates are used 'chooser.html' and 'wimport.html'.
 These may be overridden locally. See tiddlywebplugins.templates.
+
+To use add 'tiddlywebplugins.wimporter' to an instance's
+tiddywebconfig.py:
+
+    config = {
+        'system_plugins': ['tiddlywebplugins.wimporter'],
+    }
 """
 
 import cgi
@@ -29,6 +36,7 @@ from tiddlyweb.model.tiddler import Tiddler
 from tiddlyweb.store import NoBagError
 from tiddlyweb.web.util import bag_url
 from tiddlyweb.web.http import HTTP302
+
 
 def init(config):
     if 'selector' in config:
@@ -54,10 +62,10 @@ def wimport(environ, start_response):
                 _process_file(environ, form['file'].file, tmp_bag)
             fixed_bag = environ['tiddlyweb.query'].get('bag', [None])[0]
             return _show_chooser(environ, tmp_bag, fixed_bag)
-        except AttributeError, exc: # content was not right
+        except AttributeError, exc:  # content was not right
             return _send_wimport(environ, start_response,
                     'that was not a wiki %s' % exc)
-        except ValueError, exc: # file or url was not right
+        except ValueError, exc:  # file or url was not right
             return _send_wimport(environ, start_response,
                     'could not read that %s' % exc)
         except (OSError, urllib2.URLError), exc:
@@ -68,6 +76,7 @@ def wimport(environ, start_response):
         return _process_choices(environ, start_response, form)
     else:
         return _send_wimport(environ, start_response, 'missing field info')
+
 
 def _process_choices(environ, start_response, form):
     store = environ['tiddlyweb.store']
@@ -81,7 +90,8 @@ def _process_choices(environ, start_response, form):
             bag.skinny = True
             bag = store.get(bag)
         except NoBagError:
-            return _send_wimport(environ, start_response, 'chosen bag does not exist')
+            return _send_wimport(environ, start_response,
+                    'chosen bag does not exist')
     else:
         bag = form['new_bag'].value.decode('utf-8', 'ignore')
         bag = _make_bag(environ, bag)
@@ -89,7 +99,8 @@ def _process_choices(environ, start_response, form):
     try:
         bag.policy.allows(user, 'write')
     except (ForbiddenError, UserRequiredError):
-        return _send_wimport(environ, start_response, 'you may not write to that bag')
+        return _send_wimport(environ, start_response,
+                'you may not write to that bag')
 
     tiddler_titles = form.getlist('tiddler')
     for title in tiddler_titles:
@@ -165,7 +176,7 @@ def _send_wimport(environ, start_response, message=''):
     query = environ["tiddlyweb.query"]
     bag = query.get("bag", [None])[0]
     template = get_template(environ, 'wimport.html')
-    return template.generate(bag=bag,message=message)
+    return template.generate(bag=bag, message=message)
 
 
 def _get_bags(environ):
