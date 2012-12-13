@@ -23,6 +23,7 @@ import operator
 import urllib2
 
 from uuid import uuid4 as uuid
+from httpexceptor import HTTP302
 
 from tiddlywebplugins.utils import entitle, do_html
 from tiddlywebplugins.templates import get_template
@@ -35,7 +36,6 @@ from tiddlyweb.model.policy import ForbiddenError, UserRequiredError
 from tiddlyweb.model.tiddler import Tiddler
 from tiddlyweb.store import NoBagError
 from tiddlyweb.web.util import bag_url
-from tiddlyweb.web.http import HTTP302
 
 
 def init(config):
