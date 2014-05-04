@@ -52,14 +52,16 @@ def interface(environ, start_response):
 @entitle('Import Tiddlers')
 @do_html()
 def wimport(environ, start_response):
-    form = cgi.FieldStorage(fp=environ['wsgi.input'], environ=environ)
-    if 'url' in form or 'file' in form:
+    form = environ['tiddlyweb.query']
+    url = form.get('url', [None])[0]
+    files = environ['tiddlyweb.input_files']
+    if url or files:
         tmp_bag = _make_bag(environ)
         try:
-            if form['url'].value:
-                _process_url(environ, form['url'].value, tmp_bag)
-            if form['file'].filename:
-                _process_file(environ, form['file'].file, tmp_bag)
+            if url:
+                _process_url(environ, url, tmp_bag)
+            if files:
+                _process_file(environ, files[0].file, tmp_bag)
             fixed_bag = environ['tiddlyweb.query'].get('bag', [None])[0]
             return _show_chooser(environ, tmp_bag, fixed_bag)
         except AttributeError, exc:  # content was not right
@@ -82,8 +84,8 @@ def _process_choices(environ, start_response, form):
     store = environ['tiddlyweb.store']
     user = environ['tiddlyweb.usersign']
 
-    tmp_bag = form['tmp_bag'].value.decode('utf-8', 'ignore')
-    bag = form['target_bag'].value.decode('utf-8', 'ignore')
+    tmp_bag = form['tmp_bag'][0]
+    bag = form['target_bag'][0]
     if bag:
         bag = Bag(bag)
         try:
@@ -93,7 +95,7 @@ def _process_choices(environ, start_response, form):
             return _send_wimport(environ, start_response,
                     'chosen bag does not exist')
     else:
-        bag = form['new_bag'].value.decode('utf-8', 'ignore')
+        bag = form['new_bag'][0]
         bag = _make_bag(environ, bag)
 
     try:
@@ -102,7 +104,7 @@ def _process_choices(environ, start_response, form):
         return _send_wimport(environ, start_response,
                 'you may not write to that bag')
 
-    tiddler_titles = form.getlist('tiddler')
+    tiddler_titles = form['tiddler']
     for title in tiddler_titles:
         tiddler = Tiddler(title.decode('utf-8', 'ignore'), tmp_bag)
         tiddler = store.get(tiddler)
